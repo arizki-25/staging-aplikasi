@@ -1,0 +1,108 @@
+stage:
+  - build
+  - test
+  - built-container
+  - deploy
+
+build-app
+  image: node:alpine
+  stage: build
+  before_script:
+    - npm install
+  script:
+    - npm rub build
+  artifacts:
+    untracked: true
+
+run-test
+  image: node:alpine
+  stage: test
+  script:
+    - npm rub build
+  artifacts:
+    untracked: true
+
+docker-build-main:
+  image: docker:latest
+  dependencies:
+    -build-app
+  services:
+    - docker:dind
+  before_srcipt:
+    -docker login -u "arizki-25" -p "arizki753214" pesbuk
+  srcipt:
+    - docker build --pull -t "pesbuk" .
+    - docker push "pesbuk"
+  only:
+    - main
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pesbuk
+  namespace: staging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: pesbuk
+      metadata: pesbuk
+  template:
+    metadata:
+      labels:
+        name: pesbuk
+        metadata: pesbuk
+    spec:
+      containers:
+      - name: pesbuk
+        image: arizki/sosmed:1
+        ports:
+        - containerPort: 80
+        env:
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: secretpesbuk
+                  key: DB_USER
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: secretpesbuk
+                  key: DB_PASS
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: secretpesbuk
+                  key: DB_HOST
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: secretpesbuk
+                  key: DB_NAME
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pesbuk
+  namespace: staging
+spec:
+  #type: LoadBalancer
+  ports:
+    - port: 80
+      #nodePort: 30080
+  selector:
+    name: pesbuk
+    ---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secretpesbuk
+  namespace: staging
+type: Opaque
+data:
+  DB_USER: YWRtaW4=
+  DB_PASS: YXJpemtpMjUxOTkx
+  DB_NAME: ZGJfbWFjcm9zcw==
+  DB_HOST: ZGItbWFjcm9zcy5jaDQwYXBpeHJ0ZjMuYXAtc291dGhlYXN0LTEucmRzLmFtYXpvbmF3cy5jb20=
