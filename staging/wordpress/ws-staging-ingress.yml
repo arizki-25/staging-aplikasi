@@ -1,0 +1,18 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: wordpress-ingress
+  namespace: staging
+  annotations:
+    ## Untuk menaikan batas upload file
+    nginx.org/client-max-body-size: "10m"
+    ## Memaksa jalan di https
+spec:
+  rules:
+  - host: st-wordpress.sdcilsy-alpha.my.id
+    http:
+      paths:
+      #- path: /belajar
+      - backend:
+          serviceName: wordpress
+          servicePort: 80
